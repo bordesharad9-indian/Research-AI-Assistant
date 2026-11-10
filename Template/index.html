@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Research AI Assistant</title>
+
+  <!-- Apply the saved theme before the page paints (prevents a light/dark flash) -->
+  <script>
+    try {
+      var t = localStorage.getItem("rai-theme") ||
+        (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", t);
+    } catch (e) {}
+  </script>
+
+  <style>
+/* =========================================================
+   Research AI Assistant - styles
+   Colours live in variables, so light/dark is just two sets.
+   ========================================================= */
+
+:root {
+  --bg: #f5f6fb;
+  --surface: #ffffff;
+  --surface-2: #f0f2f9;
+  --border: #e4e7f1;
+  --text: #1b1f33;
+  --muted: #6a7089;
+  --accent: #4f46e5;
+  --accent-2: #7c3aed;
+  --accent-soft: #ecebfd;
+  --good: #15803d;
+  --good-soft: #dcfce7;
+  --bad: #b91c1c;
+  --bad-soft: #fee2e2;
+  --warn-soft: #fef3c7;
+  --warn: #92400e;
+  --code-bg: #eef0f8;
+  --radius: 14px;
+  --shadow: 0 1px 2px rgba(20, 24, 50, 0.05), 0 6px 18px rgba(20, 24, 50, 0.05);
+}
+
+[data-theme="dark"] {
+  --bg: #0f1220;
+  --surface: #171b2e;
+  --surface-2: #1e2339;
+  --border: #2a3050;
+  --text: #e8eaf6;
+  --muted: #98a0c0;
+  --accent: #818cf8;
+  --accent-2: #a78bfa;
+  --accent-soft: #272d57;
+  --good: #4ade80;
+  --good-soft: #14341f;
+  --bad: #f87171;
+  --bad-soft: #3b1a1d;
+  --warn-soft: #3a2f10;
+  --warn: #fcd34d;
+  --code-bg: #232948;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+h1, h2, h3, h4, p, ul { margin: 0; }
+ul { padding: 0; list-style: none; }
+
+body {
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.6;
+  transition: background 0.25s, color 0.25s;
+}
+
+/* ---------- Layout ---------- */
+.app {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  height: 100vh;
+}
+
+/* ---------- Sidebar ---------- */
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 22px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand h1 { font-size: 18px; letter-spacing: -0.01em; }
+.brand p { font-size: 12.5px; color: var(--muted); }
+.brand-icon {
+  width: 42px; height: 42px; border-radius: 12px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff; font-weight: 700; font-size: 20px;
+  display: grid; place-items: center;
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.35);
+}
+
+.panel {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+.panel h2 {
+  font-size: 11.5px; letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 10px;
+  display: flex; align-items: center; gap: 6px;
+}
+.count {
+  background: var(--accent-soft); color: var(--accent);
+  border-radius: 99px; padding: 0 8px; font-size: 11px;
+}
+
+.status-list li {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 5px 0; font-size: 14px;
+}
+.dot {
+  display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--muted); margin-right: 8px; opacity: 0.6;
+}
+
+.pill { font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 99px; }
+.pill-on   { background: var(--good-soft);  color: var(--good); }
+.pill-off  { background: var(--bad-soft);   color: var(--bad); }
+.pill-info { background: var(--accent-soft); color: var(--accent); }
+
+.doc-list {
+  display: flex; flex-direction: column; gap: 6px;
+  margin-bottom: 12px; max-height: 190px; overflow-y: auto;
+}
+.doc-list li {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 7px 10px; font-size: 13px;
+  display: flex; align-items: center; gap: 8px;
+}
+.doc-list li::before { content: "📄"; font-size: 14px; }
+.doc-list .doc-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.doc-list .doc-size { color: var(--muted); font-size: 12px; flex-shrink: 0; }
+.doc-list li.muted::before { content: none; }
+
+.muted { color: var(--muted); font-size: 13px; }
+.hint  { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+#ingest-msg:empty { display: none; }
+
+.slider-label { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 6px; }
+.slider-label strong { color: var(--accent); }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+
+.sidebar-foot { margin-top: auto; font-size: 12px; color: var(--muted); text-align: center; }
+
+/* ---------- Buttons ---------- */
+.btn {
+  font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+  border-radius: 10px; padding: 8px 14px; border: 1px solid transparent;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, opacity 0.15s;
+}
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.btn-ghost { background: var(--surface); border-color: var(--border); color: var(--text); }
+.btn-ghost:hover:not(:disabled) { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.btn-block { width: 100%; }
+
+.icon-btn {
+  width: 38px; height: 38px; border-radius: 10px; cursor: pointer; font-size: 17px;
+  background: var(--surface); border: 1px solid var(--border); color: var(--text);
+  display: grid; place-items: center; transition: background 0.15s, border-color 0.15s;
+}
+.icon-btn:hover { background: var(--accent-soft); border-color: var(--accent); }
+.menu-btn { display: none; }
+
+/* ---------- Chat column ---------- */
+.chat { display: flex; flex-direction: column; min-width: 0; height: 100vh; }
+
+.topbar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 28px; background: var(--surface); border-bottom: 1px solid var(--border);
+}
+.topbar-title { flex: 1; min-width: 0; }
+.topbar-title h2 { font-size: 17px; letter-spacing: -0.01em; }
+.topbar-title p { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topbar-actions { display: flex; gap: 8px; align-items: center; }
+
+.messages {
+  flex: 1; overflow-y: auto; padding: 26px 28px;
+  display: flex; flex-direction: column; gap: 20px;
+  scroll-behavior: smooth;
+}
+
+/* ---------- Welcome ---------- */
+.welcome { margin: auto; max-width: 640px; text-align: center; padding: 10px; }
+.welcome-icon {
+  width: 64px; height: 64px; margin: 0 auto 14px; border-radius: 18px; font-size: 30px;
+  background: var(--accent-soft); display: grid; place-items: center;
+}
+.welcome h3 { font-size: 24px; letter-spacing: -0.02em; margin-bottom: 6px; }
+.welcome p { color: var(--muted); margin-bottom: 22px; }
+
+.suggestions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left; }
+.suggestion {
+  font: inherit; color: var(--text); cursor: pointer; text-align: left;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px 16px; display: flex; flex-direction: column; gap: 3px;
+  transition: transform 0.12s, border-color 0.15s, box-shadow 0.15s;
+}
+.suggestion strong { color: var(--accent); font-size: 13px; }
+.suggestion span { font-size: 14px; }
+.suggestion:hover { transform: translateY(-2px); border-color: var(--accent); box-shadow: var(--shadow); }
+
+/* ---------- Messages ---------- */
+.msg { display: flex; gap: 12px; max-width: 840px; width: 100%; animation: rise 0.25s ease; }
+.msg.user { align-self: flex-end; flex-direction: row-reverse; width: auto; }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+.avatar {
+  width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
+  display: grid; place-items: center; font-size: 12px; font-weight: 700;
+}
+.msg.bot  .avatar { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; }
+.msg.user .avatar { background: var(--surface-2); border: 1px solid var(--border); color: var(--text); }
+
+.bubble-wrap { min-width: 0; max-width: 100%; }
+.msg.bot .bubble-wrap { flex: 1; }
+
+.bubble {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 13px 17px; box-shadow: var(--shadow);
+  overflow-wrap: anywhere;
+}
+.msg.user .bubble {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff; border-color: transparent;
+}
+.msg.error .bubble { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); }
+
+/* Meta row under a bot answer */
+.meta { display: flex; align-items: center; gap: 10px; margin-top: 6px; padding-left: 4px; font-size: 12.5px; color: var(--muted); }
+.meta button {
+  font: inherit; font-size: 12.5px; cursor: pointer; color: var(--muted);
+  background: none; border: 0; padding: 2px 6px; border-radius: 6px;
+}
+.meta button:hover { background: var(--accent-soft); color: var(--accent); }
+
+/* Markdown inside bot bubbles */
+.bubble p + p, .bubble p + ul, .bubble p + ol, .bubble ul + p, .bubble ol + p,
+.bubble pre, .bubble table, .bubble h4, .bubble ul + h4, .bubble p + h4 { margin-top: 10px; }
+.bubble h4 { font-size: 15px; }
+.bubble ul, .bubble ol { padding-left: 22px; }
+.bubble ul { list-style: disc; }
+.bubble li + li { margin-top: 3px; }
+.bubble code { background: var(--code-bg); padding: 1px 6px; border-radius: 6px; font-size: 13px; }
+.bubble pre { background: #12152a; color: #e8eaf6; padding: 12px 14px; border-radius: 10px; overflow-x: auto; }
+.bubble pre code { background: none; color: inherit; padding: 0; }
+.bubble table { border-collapse: collapse; display: block; overflow-x: auto; font-size: 13.5px; }
+.bubble th, .bubble td { border: 1px solid var(--border); padding: 6px 11px; text-align: left; }
+.bubble th { background: var(--surface-2); }
+
+.demo-tag {
+  display: inline-block; font-size: 11.5px; font-weight: 600; margin-bottom: 8px;
+  background: var(--warn-soft); color: var(--warn); padding: 2px 10px; border-radius: 99px;
+}
+
+/* ---------- Sources ---------- */
+.sources { margin-top: 12px; border-top: 1px dashed var(--border); padding-top: 10px; }
+.sources > summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--muted); }
+.sources > summary:hover { color: var(--accent); }
+.source {
+  margin-top: 8px; background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 9px 11px; font-size: 13px;
+}
+.source-head { display: flex; align-items: center; gap: 9px; font-weight: 600; }
+.source-num {
+  width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0; font-size: 11.5px;
+  background: var(--accent-soft); color: var(--accent); display: grid; place-items: center;
+}
+.source-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.score { display: flex; align-items: center; gap: 7px; flex-shrink: 0; font-size: 12px; color: var(--good); }
+.bar { width: 54px; height: 6px; border-radius: 99px; background: var(--border); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--good); border-radius: 99px; }
+.source-text { color: var(--muted); margin-top: 6px; }
+
+/* ---------- Typing indicator ---------- */
+.typing { display: inline-flex; align-items: center; gap: 5px; padding: 6px 0; }
+.typing span {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
+  animation: bounce 1.2s infinite ease-in-out;
+}
+.typing span:nth-child(2) { animation-delay: 0.15s; }
+.typing span:nth-child(3) { animation-delay: 0.3s; }
+.typing em { font-style: normal; font-size: 13px; color: var(--muted); margin-left: 6px; }
+@keyframes bounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+/* ---------- Composer ---------- */
+.composer { padding: 14px 28px 16px; background: var(--bg); }
+.composer-box {
+  display: flex; align-items: flex-end; gap: 8px; max-width: 840px; margin: 0 auto;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+  padding: 8px 8px 8px 16px; box-shadow: var(--shadow);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.composer-box:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.composer textarea {
+  flex: 1; resize: none; font: inherit; color: var(--text);
+  border: 0; outline: none; background: transparent; padding: 8px 0; max-height: 140px;
+}
+.composer textarea::placeholder { color: var(--muted); }
+.send-btn {
+  width: 40px; height: 40px; border-radius: 12px; border: 0; cursor: pointer; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; font-size: 16px;
+  transition: transform 0.1s, opacity 0.15s;
+}
+.send-btn:hover:not(:disabled) { transform: scale(1.06); }
+.send-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.composer-hint { text-align: center; font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+/* ---------- Mobile ---------- */
+.overlay { display: none; }
+
+@media (max-width: 860px) {
+  .app { grid-template-columns: 1fr; }
+  .menu-btn { display: grid; }
+  .sidebar {
+    position: fixed; inset: 0 auto 0 0; width: 290px; z-index: 30;
+    transform: translateX(-100%); transition: transform 0.25s;
+  }
+  .app.menu-open .sidebar { transform: none; box-shadow: 0 0 40px rgba(0, 0, 0, 0.35); }
+  .app.menu-open .overlay { display: block; position: fixed; inset: 0; z-index: 20; background: rgba(10, 12, 25, 0.5); }
+  .topbar, .messages, .composer { padding-left: 16px; padding-right: 16px; }
+  .topbar-title p { display: none; }
+  .suggestions { grid-template-columns: 1fr; }
+}
+
+  </style>
+</head>
+<body>
+  <div class="app">
+
+    <!-- Dark overlay behind the sidebar on phones -->
+    <div id="overlay" class="overlay"></div>
+
+    <!-- ============ SIDEBAR ============ -->
+    <aside id="sidebar" class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">R</div>
+        <div>
+          <h1>Research AI</h1>
+          <p>RAG assistant for your PDFs</p>
+        </div>
+      </div>
+
+      <section class="panel">
+        <h2>Status</h2>
+        <ul class="status-list">
+          <li><span><i class="dot"></i>Server</span><span id="st-server" class="pill pill-off">checking…</span></li>
+          <li><span><i class="dot"></i>Groq LLM</span><span id="st-llm" class="pill pill-off">—</span></li>
+          <li><span><i class="dot"></i>Chunks in DB</span><span id="st-chunks" class="pill pill-off">—</span></li>
+        </ul>
+      </section>
+
+      <section class="panel">
+        <h2>Documents <span id="doc-count" class="count"></span></h2>
+        <ul id="doc-list" class="doc-list">
+          <li class="muted">Loading…</li>
+        </ul>
+        <button id="ingest-btn" class="btn btn-ghost btn-block" type="button">Re-ingest PDFs</button>
+        <p id="ingest-msg" class="hint"></p>
+      </section>
+
+      <section class="panel">
+        <h2>Retrieval</h2>
+        <label class="slider-label" for="top-k">
+          Top-K chunks <strong id="top-k-value">5</strong>
+        </label>
+        <input id="top-k" type="range" min="1" max="10" value="5" />
+        <p class="hint">More chunks = more context, but slower answers.</p>
+      </section>
+
+      <p class="sidebar-foot">ChromaDB · MiniLM embeddings · Groq</p>
+    </aside>
+
+    <!-- ============ CHAT ============ -->
+    <main class="chat">
+      <header class="topbar">
+        <button id="menu-btn" class="icon-btn menu-btn" type="button" aria-label="Open menu">☰</button>
+        <div class="topbar-title">
+          <h2>Ask your research papers</h2>
+          <p>Answers use only the retrieved PDF context.</p>
+        </div>
+        <div class="topbar-actions">
+          <button id="theme-btn" class="icon-btn" type="button" aria-label="Toggle theme" title="Toggle theme">🌙</button>
+          <button id="clear-btn" class="btn btn-ghost" type="button">Clear chat</button>
+        </div>
+      </header>
+
+      <div id="messages" class="messages">
+        <!-- Welcome (hidden once there are messages) -->
+        <div id="welcome" class="welcome">
+          <div class="welcome-icon">🔎</div>
+          <h3>What would you like to know?</h3>
+          <p>Ask about Machine Learning, NLP, Random Forest or RAG.<br>
+             I search your PDFs and answer with sources.</p>
+          <div class="suggestions">
+            <button class="suggestion" type="button">
+              <strong>RAG</strong><span>What is Retrieval-Augmented Generation?</span>
+            </button>
+            <button class="suggestion" type="button">
+              <strong>Random Forest</strong><span>Explain how Random Forest works</span>
+            </button>
+            <button class="suggestion" type="button">
+              <strong>XGBoost</strong><span>What is XGBoost and why is it fast?</span>
+            </button>
+            <button class="suggestion" type="button">
+              <strong>SVM</strong><span>Summarize the support-vector networks paper</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <form id="chat-form" class="composer" autocomplete="off">
+        <div class="composer-box">
+          <textarea id="question" rows="1" maxlength="2000"
+                    placeholder="Type your research question…" required></textarea>
+          <button id="send-btn" class="send-btn" type="submit" aria-label="Send">➤</button>
+        </div>
+        <p class="composer-hint">Enter to send · Shift + Enter for a new line</p>
+      </form>
+    </main>
+
+  </div>
+
+  <script>
+/* =========================================================
+   Research AI Assistant - front-end logic (plain JavaScript)
+
+   Talks to the FastAPI backend in app.py:
+     GET  /api/health      -> server / LLM / database status
+     GET  /api/documents   -> list of PDFs in the Data folder
+     POST /api/ask         -> { question, top_k } -> { answer, sources }
+     POST /api/ingest      -> re-ingest the PDFs into ChromaDB
+
+   Extras: dark/light theme, chat history saved in the browser,
+   copy button, response time, mobile menu, and a clearly-labelled
+   DEMO answer when the backend cannot be reached.
+   ========================================================= */
+
+// When opened as a plain file (file://), talk to the local server.
+const API_BASE = location.protocol === "file:" ? "http://127.0.0.1:8000" : "";
+const HISTORY_KEY = "rai-history";
+const THEME_KEY = "rai-theme";
+
+// ---------- Page elements ----------
+const $ = (id) => document.getElementById(id);
+
+const appEl      = document.querySelector(".app");
+const messagesEl = $("messages");
+const formEl     = $("chat-form");
+const questionEl = $("question");
+const sendBtn    = $("send-btn");
+const topKEl     = $("top-k");
+
+let backendOnline = false;
+let history = []; // [{ role, text, sources, ms, demo, error }]
+
+// ---------- Small helpers ----------
+function escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function setPill(el, text, kind) {
+  el.textContent = text;
+  el.className = "pill pill-" + kind; // kind: on | off | info
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + " KB";
+  return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+}
+
+async function api(path, options = {}) {
+  const res = await fetch(API_BASE + path, {
+    headers: { "Content-Type": "application/json" },
+    ...options,
+  });
+  if (!res.ok) {
+    let detail = res.statusText;
+    try { detail = (await res.json()).detail || detail; } catch (_) {}
+    throw new Error(typeof detail === "string" ? detail : "Request failed");
+  }
+  return res.json();
+}
+
+// ---------- Tiny markdown renderer (headings, lists, tables, code, bold) ----------
+function renderMarkdown(source) {
+  const lines = escapeHtml(source).split("\n");
+  const out = [];
+  let i = 0;
+
+  const inline = (s) =>
+    s.replace(/`([^`]+)`/g, "<code>$1</code>")
+     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+     .replace(/(^|[\s(])_([^_]+)_(?=[\s).,]|$)/g, "$1<em>$2</em>");
+
+  const isTableRow = (l) => /^\s*\|.*\|\s*$/.test(l);
+  const isBullet   = (l) => /^\s*[-*] /.test(l);
+  const isNumbered = (l) => /^\s*\d+\. /.test(l);
+  const isHeading  = (l) => /^#{1,4} /.test(l);
+  const isFence    = (l) => l.trim().startsWith("```");
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    if (line.trim() === "") { i++; continue; }
+
+    // Code block
+    if (isFence(line)) {
+      const code = [];
+      i++;
+      while (i < lines.length && !isFence(lines[i])) code.push(lines[i++]);
+      i++; // skip closing fence
+      out.push("<pre><code>" + code.join("\n") + "</code></pre>");
+      continue;
+    }
+
+    // Heading
+    if (isHeading(line)) {
+      out.push("<h4>" + inline(line.replace(/^#{1,4} /, "")) + "</h4>");
+      i++;
+      continue;
+    }
+
+    // Table
+    if (isTableRow(line)) {
+      const rows = [];
+      while (i < lines.length && isTableRow(lines[i])) rows.push(lines[i++]);
+      const cells = (r) => r.trim().replace(/^\||\|$/g, "").split("|").map((c) => inline(c.trim()));
+      const body = rows.filter((r) => !/^[\s|:-]+$/.test(r)); // drop the ---|--- row
+      let html = "<table>";
+      body.forEach((r, idx) => {
+        const tag = idx === 0 ? "th" : "td";
+        html += "<tr>" + cells(r).map((c) => `<${tag}>${c}</${tag}>`).join("") + "</tr>";
+      });
+      out.push(html + "</table>");
+      continue;
+    }
+
+    // Bullet list
+    if (isBullet(line)) {
+      const items = [];
+      while (i < lines.length && isBullet(lines[i])) items.push(lines[i++].replace(/^\s*[-*] /, ""));
+      out.push("<ul>" + items.map((t) => "<li>" + inline(t) + "</li>").join("") + "</ul>");
+      continue;
+    }
+
+    // Numbered list
+    if (isNumbered(line)) {
+      const items = [];
+      while (i < lines.length && isNumbered(lines[i])) items.push(lines[i++].replace(/^\s*\d+\. /, ""));
+      out.push("<ol>" + items.map((t) => "<li>" + inline(t) + "</li>").join("") + "</ol>");
+      continue;
+    }
+
+    // Paragraph (consecutive plain lines)
+    const para = [];
+    while (
+      i < lines.length && lines[i].trim() !== "" &&
+      !isFence(lines[i]) && !isHeading(lines[i]) && !isTableRow(lines[i]) &&
+      !isBullet(lines[i]) && !isNumbered(lines[i])
+    ) para.push(lines[i++]);
+    out.push("<p>" + inline(para.join("<br>")) + "</p>");
+  }
+
+  return out.join("");
+}
+
+// ---------- Rendering messages ----------
+function scrollToBottom() {
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function hideWelcome() {
+  const welcome = $("welcome");
+  if (welcome) welcome.remove();
+}
+
+function sourcesHtml(sources) {
+  if (!sources || sources.length === 0) return "";
+  const items = sources.map((s, n) => {
+    const pct = Math.max(0, Math.min(100, Math.round(s.score * 100)));
+    return `
+      <div class="source">
+        <div class="source-head">
+          <span class="source-num">${n + 1}</span>
+          <span class="source-name" title="${escapeHtml(s.source)}">${escapeHtml(s.source)} · page ${s.page}</span>
+          <span class="score"><span class="bar"><i style="width:${pct}%"></i></span>${pct}%</span>
+        </div>
+        <p class="source-text">${escapeHtml(s.snippet)}</p>
+      </div>`;
+  }).join("");
+  return `<details class="sources"><summary>Sources (${sources.length})</summary>${items}</details>`;
+}
+
+// Build one message element from a history item
+function buildMessage(msg) {
+  const wrapper = document.createElement("div");
+  wrapper.className = `msg ${msg.role}${msg.error ? " error" : ""}`;
+
+  let bubble = "";
+  let meta = "";
+
+  if (msg.role === "user") {
+    bubble = escapeHtml(msg.text).replace(/\n/g, "<br>");
+  } else if (msg.error) {
+    bubble = "<strong>Something went wrong.</strong><br>" + escapeHtml(msg.text);
+  } else {
+    bubble =
+      (msg.demo ? '<span class="demo-tag">Demo mode - backend not connected</span>' : "") +
+      renderMarkdown(msg.text) +
+      sourcesHtml(msg.sources);
+    const secs = msg.ms ? (msg.ms / 1000).toFixed(1) + "s" : "";
+    meta = `<div class="meta"><span>${secs}</span><button type="button" data-copy>Copy</button></div>`;
+  }
+
+  wrapper.innerHTML = `
+    <div class="avatar">${msg.role === "user" ? "You" : "AI"}</div>
+    <div class="bubble-wrap"><div class="bubble">${bubble}</div>${meta}</div>`;
+
+  const copyBtn = wrapper.querySelector("[data-copy]");
+  if (copyBtn) copyBtn.addEventListener("click", () => copyText(msg.text, copyBtn));
+
+  return wrapper;
+}
+
+function addMessage(msg, save = true) {
+  hideWelcome();
+  const el = buildMessage(msg);
+  messagesEl.appendChild(el);
+  scrollToBottom();
+  if (save) {
+    history.push(msg);
+    saveHistory();
+  }
+  return el;
+}
+
+function addTyping() {
+  hideWelcome();
+  const el = document.createElement("div");
+  el.className = "msg bot";
+  el.innerHTML = `
+    <div class="avatar">AI</div>
+    <div class="bubble-wrap"><div class="bubble">
+      <div class="typing"><span></span><span></span><span></span><em>Searching your PDFs…</em></div>
+    </div></div>`;
+  messagesEl.appendChild(el);
+  scrollToBottom();
+  return el;
+}
+
+async function copyText(text, button) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (_) {
+    // Fallback for older browsers / file:// pages
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    ta.remove();
+  }
+  button.textContent = "Copied ✓";
+  setTimeout(() => (button.textContent = "Copy"), 1500);
+}
+
+// ---------- Saved history (stored in this browser only) ----------
+function saveHistory() {
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(-50))); } catch (_) {}
+}
+
+function restoreHistory() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+    if (Array.isArray(saved) && saved.length) {
+      history = saved;
+      history.forEach((m) => addMessage(m, false));
+    }
+  } catch (_) {}
+}
+
+// ---------- Demo fallback (only used when the backend is unreachable) ----------
+const DEMO_ANSWER = {
+  text:
+    "**Retrieval-Augmented Generation (RAG)** combines two steps:\n\n" +
+    "1. **Retrieve** - find the document chunks most similar to your question using vector embeddings.\n" +
+    "2. **Generate** - give those chunks to a language model so it answers using that evidence.\n\n" +
+    "| Step | What happens |\n|---|---|\n| Retrieve | ChromaDB returns the top-K similar chunks |\n| Generate | The Groq LLM writes an answer from that context |\n\n" +
+    "This is sample text. Start the FastAPI server to get real answers from your PDFs.",
+  sources: [
+    { source: "2005.11401v4.pdf", page: 2, score: 0.82,
+      snippet: "Sample snippet shown in demo mode - real snippets come from your PDF chunks." },
+    { source: "randomforest2001.pdf", page: 5, score: 0.64,
+      snippet: "A second sample source, to show how the match bar looks." },
+  ],
+};
+
+// ---------- Ask a question ----------
+async function askQuestion(question) {
+  addMessage({ role: "user", text: question });
+
+  sendBtn.disabled = true;
+  const typing = addTyping();
+  const started = performance.now();
+
+  try {
+    const data = await api("/api/ask", {
+      method: "POST",
+      body: JSON.stringify({ question, top_k: Number(topKEl.value) }),
+    });
+    typing.remove();
+    addMessage({
+      role: "bot",
+      text: data.answer,
+      sources: data.sources,
+      ms: performance.now() - started,
+    });
+  } catch (err) {
+    typing.remove();
+    if (!backendOnline) {
+      addMessage({ role: "bot", demo: true, ...DEMO_ANSWER, ms: performance.now() - started });
+    } else {
+      addMessage({ role: "bot", error: true, text: err.message });
+    }
+  } finally {
+    sendBtn.disabled = false;
+    questionEl.focus();
+  }
+}
+
+// ---------- Sidebar: status + documents ----------
+async function loadStatus() {
+  try {
+    const h = await api("/api/health");
+    backendOnline = true;
+    setPill($("st-server"), h.status === "ok" ? "online" : "starting", h.status === "ok" ? "on" : "info");
+    setPill($("st-llm"), h.llm_ready ? "ready" : "no API key", h.llm_ready ? "on" : "off");
+    setPill($("st-chunks"), String(h.chunks_in_db), "info");
+  } catch (_) {
+    backendOnline = false;
+    setPill($("st-server"), "offline", "off");
+    setPill($("st-llm"), "—", "off");
+    setPill($("st-chunks"), "—", "off");
+  }
+}
+
+async function loadDocuments() {
+  const list = $("doc-list");
+  try {
+    const data = await api("/api/documents");
+    $("doc-count").textContent = data.documents.length;
+    list.innerHTML = data.documents.length
+      ? data.documents.map((d) => `
+          <li><span class="doc-name" title="${escapeHtml(d.name)}">${escapeHtml(d.name)}</span>
+              <span class="doc-size">${formatBytes(d.size)}</span></li>`).join("")
+      : '<li class="muted">No PDFs found in the Data folder.</li>';
+  } catch (_) {
+    $("doc-count").textContent = "";
+    list.innerHTML = '<li class="muted">Start the server to list PDFs.</li>';
+  }
+}
+
+async function ingestPdfs() {
+  const btn = $("ingest-btn");
+  const msg = $("ingest-msg");
+  btn.disabled = true;
+  msg.textContent = "Ingesting PDFs… this can take a few minutes.";
+  try {
+    const r = await api("/api/ingest", { method: "POST" });
+    msg.textContent = r.message;
+    loadStatus();
+  } catch (err) {
+    msg.textContent = "Failed: " + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ---------- Theme + mobile menu ----------
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  $("theme-btn").textContent = theme === "dark" ? "☀️" : "🌙";
+  try { localStorage.setItem(THEME_KEY, theme); } catch (_) {}
+}
+
+function setMenu(open) {
+  appEl.classList.toggle("menu-open", open);
+}
+
+// ---------- Events ----------
+formEl.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const q = questionEl.value.trim();
+  if (!q || sendBtn.disabled) return;
+  questionEl.value = "";
+  questionEl.style.height = "auto";
+  askQuestion(q);
+});
+
+// Enter = send, Shift+Enter = new line
+questionEl.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    formEl.requestSubmit();
+  }
+});
+
+// Auto-grow the textarea
+questionEl.addEventListener("input", () => {
+  questionEl.style.height = "auto";
+  questionEl.style.height = Math.min(questionEl.scrollHeight, 140) + "px";
+});
+
+// Suggestion cards
+document.querySelectorAll(".suggestion").forEach((card) =>
+  card.addEventListener("click", () =>
+    askQuestion(card.querySelector("span").textContent.trim())
+  )
+);
+
+topKEl.addEventListener("input", () => ($("top-k-value").textContent = topKEl.value));
+$("ingest-btn").addEventListener("click", ingestPdfs);
+
+$("clear-btn").addEventListener("click", () => {
+  history = [];
+  try { localStorage.removeItem(HISTORY_KEY); } catch (_) {}
+  location.reload(); // simplest way to restore the welcome screen
+});
+
+$("theme-btn").addEventListener("click", () => {
+  const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  applyTheme(next);
+});
+
+$("menu-btn").addEventListener("click", () => setMenu(true));
+$("overlay").addEventListener("click", () => setMenu(false));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") setMenu(false); });
+
+// ---------- Start ----------
+applyTheme(document.documentElement.getAttribute("data-theme") || "light");
+restoreHistory();
+loadStatus();
+loadDocuments();
+questionEl.focus();
+
+</script>
+</body>
+</html>
